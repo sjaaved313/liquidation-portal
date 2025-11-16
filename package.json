@@ -9,22 +9,28 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@supabase/auth-helpers-nextjs": "^0.10.0",
     "@supabase/auth-ui-react": "^0.4.7",
     "@supabase/ssr": "^0.7.0",
-    "@supabase/supabase-js": "^2.75.1",
+    "@supabase/supabase-js": "^2.76.1",
+    "csv-parse": "^6.1.0",
     "exceljs": "^4.4.0",
+    "lodash": "^4.17.21",
     "next": "15.5.6",
     "papaparse": "^5.5.3",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "recharts": "^3.3.0"
+    "recharts": "^3.3.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
+    "@types/lodash": "^4.17.20",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/xlsx": "^0.0.35",
     "eslint": "^9",
     "eslint-config-next": "15.5.6",
     "tailwindcss": "^4",

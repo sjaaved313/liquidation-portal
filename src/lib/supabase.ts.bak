@@ -1,0 +1,32 @@
+import { createBrowserClient } from '@supabase/ssr';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
+
+// Client-side client (for browser components like login form)
+export const createBrowserSupabaseClient = () => createBrowserClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
+
+// Server-side client (for server components and API routes)
+export const createServerSupabaseClient = async () => {
+  const cookieStore = await cookies();
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, // Use anon key; switch to SUPABASE_SERVICE_ROLE_KEY for admin tasks
+    {
+      cookies: {
+        async get(name: string) {
+          const cookie = await cookieStore.get(name);
+          return cookie?.value;
+        },
+        async set(name: string, value: string, options: any) {
+          await cookieStore.set(name, value, options);
+        },
+        async remove(name: string, options: any) {
+          await cookieStore.set(name, '', { ...options, maxAge: 0 });
+        },
+      },
+    }
+  );
+};
