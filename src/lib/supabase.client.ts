@@ -1,7 +1,18 @@
 // src/lib/supabase.client.ts
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient, AuthChangeEvent, Session } from '@supabase/supabase-js';
 
-export function createSupabaseClient() {
+// Extend window type
+declare global {
+  interface Window {
+    supabaseAuthListener?: boolean;
+  }
+}
+
+let client: SupabaseClient | null = null;
+
+export function createSupabaseClient(): SupabaseClient {
+  if (client) return client;
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
@@ -9,30 +20,28 @@ export function createSupabaseClient() {
     throw new Error('Missing Supabase env vars');
   }
 
-  return createClient(supabaseUrl, supabaseAnonKey, {
+  client = createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
       persistSession: true,
       detectSessionInUrl: true,
       storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-      // redirectTo IS REMOVED — NOT SUPPORTED HERE
-    },
-    global: {
-      // DYNAMIC REDIRECT — THIS IS THE CORRECT WAY
-      headers: {
-        'X-Client-Info': 'nextjs-app',
-      },
     },
   });
-}
 
-// SET REDIRECT DYNAMICALLY AFTER CLIENT CREATION
-if (typeof window !== 'undefined') {
-  const supabase = createSupabaseClient();
-  supabase.auth.onAuthStateChange((event, session) => {
-    if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-      // Optional: redirect after login
-      const redirectPath = sessionStorage.getItem('supabase.redirect') || '/owner/dashboard';
-      window.location.href = redirectPath;
-    }
-  });
+  // PREVENT INFINITE LOOP — RUN ONCE
+  if (typeof window !== 'undefined' && !window.supabaseAuthListener) {
+    window.supabaseAuthListener = true;
+
+    client.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
+      if (event === 'SIGNED_IN' && session) {
+        const redirectTo = sessionStorage.getItem('supabase.redirect') || '/owner/dashboard';
+        sessionStorage.removeItem('supabase.redirect');
+        if (window.location.pathname === '/login') {
+          window.location.href = redirectTo;
+        }
+      }
+    });
+  }
+
+  return client;
 }
