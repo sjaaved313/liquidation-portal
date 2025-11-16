@@ -40,7 +40,9 @@ export default function LiquidationPage() {
     return () => subscription.unsubscribe();
   }, [supabase, router]);
 
-      // FETCH OWNER FROM owners.flats JSONB ARRAY
+      // ... rest of imports and component
+
+  // FETCH OWNER FROM owners.flats JSONB ARRAY
   useEffect(() => {
     const fetchOwner = async () => {
       const normalizedFlat = flatName.trim().toLowerCase();
@@ -56,9 +58,8 @@ export default function LiquidationPage() {
         return;
       }
 
-      if (data) {
-        const flats = (data.flats || []).map((f: string) => f.trim().toLowerCase());
-
+      if (data && Array.isArray(data.flats)) {
+        const flats = data.flats.map((f: string) => f.trim().toLowerCase());
         if (flats.includes(normalizedFlat)) {
           setOwner({
             name: data.name || 'Unknown',
@@ -70,6 +71,8 @@ export default function LiquidationPage() {
         } else {
           setOwner(null);
         }
+      } else {
+        setOwner(null);
       }
     };
     fetchOwner();
