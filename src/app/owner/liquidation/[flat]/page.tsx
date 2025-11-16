@@ -40,44 +40,49 @@ export default function LiquidationPage() {
     return () => subscription.unsubscribe();
   }, [supabase, router]);
 
-        // FETCH OWNER FROM owners.flats JSONB ARRAY
+    // FETCH OWNER FROM owners.flats JSONB ARRAY
   useEffect(() => {
     const fetchOwner = async () => {
-      // Normalize flat name from URL
+      // Normalize incoming flat name
       const normalizedFlat = flatName
         .trim()
-        .replace(/–/g, '-')  // Replace en-dash
-        .replace(/\s+/g, ' ') // Normalize spaces
+        .replace(/–/g, '-')
+        .replace(/\s+/g, ' ')
         .toLowerCase();
 
-      const { data, error } = await supabase
+      // Fetch ALL owners
+      const { data: owners, error } = await supabase
         .from('owners')
-        .select('name, address, nif_id, email, flats')
-        .single();
+        .select('name, address, nif_id, email, flats');
 
-      if (error || !data || !Array.isArray(data.flats)) {
-        console.error('Owner fetch error:', error);
+      if (error || !owners || owners.length === 0) {
+        console.error('No owners found:', error);
         setOwner(null);
         return;
       }
 
-      // Normalize all flats in DB
-      const dbFlats = data.flats.map((f: string) =>
-        f.trim().replace(/–/g, '-').replace(/\s+/g, ' ').toLowerCase()
-      );
+      // Search for matching flat
+      for (const owner of owners) {
+        if (!Array.isArray(owner.flats)) continue;
 
-      if (dbFlats.includes(normalizedFlat)) {
-        setOwner({
-          name: data.name || 'Unknown',
-          nif_id: data.nif_id || '',
-          email: data.email || '',
-          phone: '',
-          address: data.address || '',
-        });
-      } else {
-        console.log('Flat not found:', flatName, 'vs', dbFlats);
-        setOwner(null);
+        const dbFlats = owner.flats.map((f: string) =>
+          f.trim().replace(/–/g, '-').replace(/\s+/g, ' ').toLowerCase()
+        );
+
+        if (dbFlats.includes(normalizedFlat)) {
+          setOwner({
+            name: owner.name || 'Unknown',
+            nif_id: owner.nif_id || '',
+            email: owner.email || '',
+            phone: '',
+            address: owner.address || '',
+          });
+          return;
+        }
       }
+
+      // Not found
+      setOwner(null);
     };
     fetchOwner();
   }, [flatName, supabase]);
