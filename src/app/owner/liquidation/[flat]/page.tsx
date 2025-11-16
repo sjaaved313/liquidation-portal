@@ -40,13 +40,14 @@ export default function LiquidationPage() {
     return () => subscription.unsubscribe();
   }, [supabase, router]);
 
-  // FETCH OWNER FROM owners.flats JSONB ARRAY
+      // FETCH OWNER FROM owners.flats JSONB ARRAY
   useEffect(() => {
     const fetchOwner = async () => {
+      const normalizedFlat = flatName.trim().toLowerCase();
+
       const { data, error } = await supabase
         .from('owners')
-        .select('name, address, nif_id, email')
-        .contains('flats', [flatName])
+        .select('name, address, nif_id, email, flats')
         .single();
 
       if (error) {
@@ -56,15 +57,19 @@ export default function LiquidationPage() {
       }
 
       if (data) {
-        setOwner({
-          name: data.name || 'Unknown',
-          nif_id: data.nif_id || '',
-          email: data.email || '',
-          phone: '',
-          address: data.address || '',
-        });
-      } else {
-        setOwner(null);
+        const flats = (data.flats || []).map((f: string) => f.trim().toLowerCase());
+
+        if (flats.includes(normalizedFlat)) {
+          setOwner({
+            name: data.name || 'Unknown',
+            nif_id: data.nif_id || '',
+            email: data.email || '',
+            phone: '',
+            address: data.address || '',
+          });
+        } else {
+          setOwner(null);
+        }
       }
     };
     fetchOwner();
