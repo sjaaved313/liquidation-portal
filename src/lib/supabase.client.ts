@@ -1,4 +1,3 @@
-/*
 // src/lib/supabase.client.ts
 import { createClient } from '@supabase/supabase-js';
 
@@ -10,37 +9,30 @@ export function createSupabaseClient() {
     throw new Error('Missing Supabase env vars');
   }
 
-  const client = createClient(supabaseUrl, supabaseAnonKey, {
+  return createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
       persistSession: true,
       detectSessionInUrl: true,
       storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+      // redirectTo IS REMOVED — NOT SUPPORTED HERE
+    },
+    global: {
+      // DYNAMIC REDIRECT — THIS IS THE CORRECT WAY
+      headers: {
+        'X-Client-Info': 'nextjs-app',
+      },
     },
   });
-
-  if (typeof window !== 'undefined') {
-    const url = new URL(window.location.href);
-    const hash = url.hash;
-    if (hash.includes('access_token')) {
-      const accessToken = hash.split('access_token=')[1]?.split('&')[0];
-      const refreshToken = hash.split('refresh_token=')[1]?.split('&')[0];
-      if (accessToken && refreshToken) {
-        client.auth.setSession({ access_token: accessToken, refresh_token: refreshToken }).then(() => {
-          window.history.replaceState({}, '', '/owner/dashboard');
-        });
-      }
-    }
-  }
-
-  return client;
 }
-  */
- // src/lib/supabase.client.ts
-import { createClient } from '@supabase/supabase-js';
 
-export const createSupabaseClient = () => {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-};
+// SET REDIRECT DYNAMICALLY AFTER CLIENT CREATION
+if (typeof window !== 'undefined') {
+  const supabase = createSupabaseClient();
+  supabase.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+      // Optional: redirect after login
+      const redirectPath = sessionStorage.getItem('supabase.redirect') || '/owner/dashboard';
+      window.location.href = redirectPath;
+    }
+  });
+}
