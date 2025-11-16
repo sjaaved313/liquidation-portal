@@ -40,38 +40,42 @@ export default function LiquidationPage() {
     return () => subscription.unsubscribe();
   }, [supabase, router]);
 
-      // ... rest of imports and component
-
-  // FETCH OWNER FROM owners.flats JSONB ARRAY
+        // FETCH OWNER FROM owners.flats JSONB ARRAY
   useEffect(() => {
     const fetchOwner = async () => {
-      const normalizedFlat = flatName.trim().toLowerCase();
+      // Normalize flat name from URL
+      const normalizedFlat = flatName
+        .trim()
+        .replace(/–/g, '-')  // Replace en-dash
+        .replace(/\s+/g, ' ') // Normalize spaces
+        .toLowerCase();
 
       const { data, error } = await supabase
         .from('owners')
         .select('name, address, nif_id, email, flats')
         .single();
 
-      if (error) {
+      if (error || !data || !Array.isArray(data.flats)) {
         console.error('Owner fetch error:', error);
         setOwner(null);
         return;
       }
 
-      if (data && Array.isArray(data.flats)) {
-        const flats = data.flats.map((f: string) => f.trim().toLowerCase());
-        if (flats.includes(normalizedFlat)) {
-          setOwner({
-            name: data.name || 'Unknown',
-            nif_id: data.nif_id || '',
-            email: data.email || '',
-            phone: '',
-            address: data.address || '',
-          });
-        } else {
-          setOwner(null);
-        }
+      // Normalize all flats in DB
+      const dbFlats = data.flats.map((f: string) =>
+        f.trim().replace(/–/g, '-').replace(/\s+/g, ' ').toLowerCase()
+      );
+
+      if (dbFlats.includes(normalizedFlat)) {
+        setOwner({
+          name: data.name || 'Unknown',
+          nif_id: data.nif_id || '',
+          email: data.email || '',
+          phone: '',
+          address: data.address || '',
+        });
       } else {
+        console.log('Flat not found:', flatName, 'vs', dbFlats);
         setOwner(null);
       }
     };
