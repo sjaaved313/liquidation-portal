@@ -1,14 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { createSupabaseClient } from '@/lib/supabase.client';
-import { useParams } from 'next/navigation';
-
-interface Sale {
-  check_in: string;
-  net_sales: number;
-  month: string;
-}
+import { useParams, useRouter } from 'next/navigation';
 
 interface Owner {
   name: string;
@@ -20,18 +14,41 @@ interface Owner {
 
 export default function LiquidationPage() {
   const params = useParams();
+  const router = useRouter();
   const flatName = decodeURIComponent(params.flat as string);
 
   const [view, setView] = useState<'Per month' | 'Quarterly'>('Per month');
   const [selectedPeriod, setSelectedPeriod] = useState<string>('');
   const [availableMonths, setAvailableMonths] = useState<string[]>([]);
-  const [sales, setSales] = useState<Sale[]>([]);
+  const [stats, setStats] = useState<{
+    brutoTotal: number;
+    commission: number;
+    extras: number;
+    igic: number;
+    ownerNetto: number;
+  } | null>(null);
   const [owner, setOwner] = useState<Owner | null>(null);
   const [loading, setLoading] = useState(true);
 
   const supabase = createSupabaseClient();
 
-  // === FETCH OWNER (ONCE) ===
+  /* -------------------------------------------------
+     AUTH GUARD – prevents flash/redirect loop
+  ------------------------------------------------- */
+  useEffect(() => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') router.push('/login');
+      // stay on page when already signed in
+    });
+
+    return () => subscription.unsubscribe();
+  }, [supabase, router]);
+
+  /* -------------------------------------------------
+     FETCH OWNER
+  ------------------------------------------------- */
   useEffect(() => {
     const fetchOwner = async () => {
       const { data } = await supabase
@@ -53,68 +70,75 @@ export default function LiquidationPage() {
     fetchOwner();
   }, [flatName, supabase]);
 
-  // === FETCH MONTHS & SALES (ONCE PER FLAT) ===
+  /* -------------------------------------------------
+     FETCH AVAILABLE MONTHS
+  ------------------------------------------------- */
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
+    const fetchMonths = async () => {
       const { data } = await supabase
         .from('detail_sales')
-        .select('check_in, net_sales, month')
+        .select('month')
         .eq('flat_name', flatName)
-        .not('check_in', 'is', null)
-        .order('check_in', { ascending: true });
+        .order('month', { ascending: true });
 
-      if (data && data.length > 0) {
-        setSales(data);
-        const months = [...new Set(data.map(s => s.month))].filter(Boolean).sort();
+      if (data) {
+        const months = [...new Set(data.map((d) => d.month))].filter(Boolean).sort();
         setAvailableMonths(months);
-        setSelectedPeriod(months[0]); // Auto-select first
+        if (months.length > 0) setSelectedPeriod(months[0]);
+      }
+    };
+    fetchMonths();
+  }, [flatName, supabase]);
+
+  /* -------------------------------------------------
+     FETCH STATS (runs when period/view changes)
+  ------------------------------------------------- */
+  useEffect(() => {
+    const fetchStats = async () => {
+      if (!selectedPeriod) return;
+
+      setLoading(true);
+      let query = supabase
+        .from('detail_sales')
+        .select('net_sales')
+        .eq('flat_name', flatName);
+
+      if (view === 'Per month') {
+        query = query.eq('month', selectedPeriod);
+      } else {
+        const q = selectedPeriod.match(/Q(\d)/);
+        if (q) {
+          const quarter = parseInt(q[1]);
+          const start = String((quarter - 1) * 3 + 1).padStart(2, '0');
+          const end = String(quarter * 3).padStart(2, '0');
+          query = query.gte('month', `2025-${start}`).lte('month', `2025-${end}`);
+        }
+      }
+
+      const { data } = await query;
+      if (data && data.length) {
+        const brutoTotal = data.reduce((s, r) => s + r.net_sales, 0);
+        const commission = brutoTotal * 0.15;
+        const extras = 50;
+        const igic = (commission + extras) * 0.07;
+        const ownerNetto = brutoTotal - commission - extras - igic;
+        setStats({ brutoTotal, commission, extras, igic, ownerNetto });
+      } else {
+        setStats(null);
       }
       setLoading(false);
     };
-    fetchData();
-  }, [flatName, supabase]);
 
-  // === FILTER LOGIC (PURE JS - NO RE-RENDER LOOP) ===
-  const filteredSales = useCallback(() => {
-    if (!selectedPeriod || sales.length === 0) return [];
-
-    if (view === 'Per month') {
-      return sales.filter(s => s.month === selectedPeriod);
-    }
-
-    // Quarterly
-    const qMatch = selectedPeriod.match(/Q(\d)/);
-    if (!qMatch) return [];
-    const q = parseInt(qMatch[1]);
-    const start = String((q - 1) * 3 + 1).padStart(2, '0');
-    const end = String(q * 3).padStart(2, '0');
-    return sales.filter(s => {
-      const m = s.month.split('-')[1];
-      return m >= start && m <= end;
-    });
-  }, [sales, selectedPeriod, view]);
-
-  const stats = useCallback(() => {
-    const filtered = filteredSales();
-    if (filtered.length === 0) return null;
-
-    const brutoTotal = filtered.reduce((sum, s) => sum + s.net_sales, 0);
-    const commission = brutoTotal * 0.15;
-    const extras = 50;
-    const igic = (commission + extras) * 0.07;
-    const ownerNetto = brutoTotal - commission - extras - igic;
-
-    return { brutoTotal, commission, extras, igic, ownerNetto };
-  }, [filteredSales])();
+    fetchStats();
+  }, [selectedPeriod, view, flatName, supabase]);
 
   const quarters = ['Q1 2025', 'Q2 2025', 'Q3 2025', 'Q4 2025'];
   const periods = view === 'Per month' ? availableMonths : quarters;
 
-  // Reset period on view change
+  // Reset period when view changes
   useEffect(() => {
     setSelectedPeriod(periods[0] || '');
-  }, [view]);
+  }, [view, periods]);
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8">
@@ -145,7 +169,7 @@ export default function LiquidationPage() {
               disabled={periods.length === 0}
             >
               <option value="">Select...</option>
-              {periods.map(p => (
+              {periods.map((p) => (
                 <option key={p} value={p}>
                   {view === 'Per month' ? p.replace('-', ' / ') : p}
                 </option>
@@ -168,7 +192,7 @@ export default function LiquidationPage() {
       </div>
 
       {loading ? (
-        <p className="text-center">Loading...</p>
+        <p className="text-center text-gray-500">Loading...</p>
       ) : !stats ? (
         <p className="text-center text-gray-500">No data for selected period.</p>
       ) : (
@@ -189,13 +213,21 @@ export default function LiquidationPage() {
 
             <div className="bg-white p-6 rounded-xl shadow">
               <h2 className="text-xl font-semibold mb-4">Summary</h2>
-              <SummaryRow label="Month" value={selectedPeriod.replace('-', ' / 2025')} />
+              <SummaryRow
+                label="Period"
+                value={selectedPeriod.replace('-', ' / 2025')}
+              />
               <SummaryRow label="Bruto total" value={`${stats.brutoTotal.toFixed(2)} €`} />
               <SummaryRow label="Commission" value={`${stats.commission.toFixed(2)} €`} />
               <SummaryRow label="Extras" value={`${stats.extras.toFixed(2)} €`} />
               <SummaryRow label="IGIC (7%)" value={`${stats.igic.toFixed(2)} €`} />
               <div className="mt-6 p-4 bg-green-100 rounded-lg">
-                <SummaryRow label="Owner Netto" value={`${stats.ownerNetto.toFixed(2)} €`} bold highlight />
+                <SummaryRow
+                  label="Owner Netto"
+                  value={`${stats.ownerNetto.toFixed(2)} €`}
+                  bold
+                  highlight
+                />
               </div>
               <p className="text-xs text-gray-600 mt-4">
                 Formula: Owner Netto = Bruto total - Commission - Extras - IGIC
@@ -234,7 +266,8 @@ export default function LiquidationPage() {
             </div>
             {owner ? (
               <p className="text-sm">
-                {owner.name} ({owner.nif}) — {owner.email} - {owner.phone}<br />
+                {owner.name} ({owner.nif}) — {owner.email} - {owner.phone}
+                <br />
                 {owner.address}
               </p>
             ) : (
@@ -246,9 +279,24 @@ export default function LiquidationPage() {
           <div className="bg-white p-6 rounded-xl shadow">
             <h2 className="text-xl font-semibold mb-4">Documents</h2>
             <div className="flex flex-wrap gap-4">
-              <DownloadBtn label="Download Management Bill (PDF)" href={`/api/pdf/management?flat=${encodeURIComponent(flatName)}&period=${selectedPeriod}`} />
-              <DownloadBtn label="Download Reservation Statement (Owner)" href={`/api/excel/reservation?flat=${encodeURIComponent(flatName)}&period=${selectedPeriod}`} />
-              <DownloadBtn label="Download Receiving Bill (Owner) (PDF)" href={`/api/pdf/receiving?flat=${encodeURIComponent(flatName)}&period=${selectedPeriod}`} />
+              <DownloadBtn
+                label="Download Management Bill (PDF)"
+                href={`/api/pdf/management?flat=${encodeURIComponent(
+                  flatName
+                )}&period=${selectedPeriod}`}
+              />
+              <DownloadBtn
+                label="Download Reservation Statement (Owner)"
+                href={`/api/excel/reservation?flat=${encodeURIComponent(
+                  flatName
+                )}&period=${selectedPeriod}`}
+              />
+              <DownloadBtn
+                label="Download Receiving Bill (Owner) (PDF)"
+                href={`/api/pdf/receiving?flat=${encodeURIComponent(
+                  flatName
+                )}&period=${selectedPeriod}`}
+              />
             </div>
           </div>
         </>
@@ -257,6 +305,9 @@ export default function LiquidationPage() {
   );
 }
 
+/* -------------------------------------------------
+   SMALL UI COMPONENTS
+------------------------------------------------- */
 const InputRow = ({ label, value }: { label: string; value: string }) => (
   <div className="flex justify-between py-2 border-b last:border-0">
     <span>{label}</span>
@@ -264,8 +315,22 @@ const InputRow = ({ label, value }: { label: string; value: string }) => (
   </div>
 );
 
-const SummaryRow = ({ label, value, bold, highlight }: { label: string; value: string; bold?: boolean; highlight?: boolean }) => (
-  <div className={`flex justify-between py-2 ${bold ? 'font-bold' : ''} ${highlight ? 'text-green-700' : ''}`}>
+const SummaryRow = ({
+  label,
+  value,
+  bold,
+  highlight,
+}: {
+  label: string;
+  value: string;
+  bold?: boolean;
+  highlight?: boolean;
+}) => (
+  <div
+    className={`flex justify-between py-2 ${bold ? 'font-bold' : ''} ${
+      highlight ? 'text-green-700' : ''
+    }`}
+  >
     <span>{label}</span>
     <span>{value}</span>
   </div>
