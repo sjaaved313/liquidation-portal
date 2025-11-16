@@ -6,7 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 
 interface Owner {
   name: string;
-  nif: string;
+  nif_id: string;
   email: string;
   phone: string;
   address: string;
@@ -40,21 +40,35 @@ export default function LiquidationPage() {
     return () => subscription.unsubscribe();
   }, [supabase, router]);
 
-  // FETCH OWNER
+  // FETCH OWNER FROM `properties` → `owners`
   useEffect(() => {
     const fetchOwner = async () => {
-      const { data } = await supabase
-        .from('owners')
-        .select('name, nif, email, phone, address')
-        .ilike('flat_name', flatName)
+      // Step 1: Get owner_id from properties
+      const { data: property } = await supabase
+        .from('properties')
+        .select('owner_id')
+        .eq('name', flatName)
         .single();
-      if (data) {
+
+      if (!property?.owner_id) {
+        setOwner(null);
+        return;
+      }
+
+      // Step 2: Get owner details
+      const { data: ownerData } = await supabase
+        .from('owners')
+        .select('name, address, nif_id, email')
+        .eq('id', property.owner_id)
+        .single();
+
+      if (ownerData) {
         setOwner({
-          name: data.name || 'Unknown',
-          nif: data.nif || '',
-          email: data.email || '',
-          phone: data.phone || '',
-          address: data.address || '',
+          name: ownerData.name || 'Unknown',
+          nif_id: ownerData.nif_id || '',
+          email: ownerData.email || '',
+          phone: '', // not in table
+          address: ownerData.address || '',
         });
       }
     };
@@ -81,7 +95,7 @@ export default function LiquidationPage() {
     fetchMonths();
   }, [flatName, supabase]);
 
-  // FETCH STATS + EXTRAS FROM pnl_by_flat
+  // FETCH STATS + EXTRAS
   useEffect(() => {
     const fetchStats = async () => {
       if (!selectedPeriod) return;
@@ -90,7 +104,7 @@ export default function LiquidationPage() {
       let brutoTotal = 0;
       let extras = 0;
 
-      // 1. FETCH NET SALES
+      // 1. NET SALES
       let salesQuery = supabase
         .from('detail_sales')
         .select('net_sales')
@@ -113,7 +127,7 @@ export default function LiquidationPage() {
         brutoTotal = salesData.reduce((sum, r) => sum + r.net_sales, 0);
       }
 
-      // 2. FETCH EXTRAS FROM pnl_by_flat (ONCE PER MONTH)
+      // 2. EXTRAS FROM pnl_by_flat
       if (view === 'Per month') {
         const { data: pnlData } = await supabase
           .from('pnl_by_flat')
@@ -121,10 +135,8 @@ export default function LiquidationPage() {
           .eq('flat_name', flatName)
           .eq('month', selectedPeriod)
           .single();
-
         extras = pnlData?.additional_expenses ?? 0;
       } else {
-        // Quarterly: sum extras from 3 months
         const qMatch = selectedPeriod.match(/Q(\d)/);
         if (qMatch) {
           const q = parseInt(qMatch[1]);
@@ -136,7 +148,6 @@ export default function LiquidationPage() {
             .eq('flat_name', flatName)
             .gte('month', `2025-${start}`)
             .lte('month', `2025-${end}`);
-
           extras = pnlData?.reduce((s, r) => s + (r.additional_expenses || 0), 0) ?? 0;
         }
       }
@@ -152,11 +163,9 @@ export default function LiquidationPage() {
     fetchStats();
   }, [selectedPeriod, view, flatName, supabase]);
 
-  // QUARTERS
   const quarters = ['Q1 2025', 'Q2 2025', 'Q3 2025', 'Q4 2025'];
   const periods = view === 'Per month' ? availableMonths : quarters;
 
-  // Reset period only if switching view
   useEffect(() => {
     if (view === 'Per month' && availableMonths.length > 0 && !availableMonths.includes(selectedPeriod)) {
       setSelectedPeriod(availableMonths[0]);
@@ -240,19 +249,47 @@ export default function LiquidationPage() {
             </div>
           </div>
 
-          {/* Owner & Docs */}
+          {/* INVOICE & OWNER — RESTORED */}
           <div className="bg-white p-6 rounded-xl shadow">
-            <h2 className="text-xl font-semibold mb-4">Datos del propietario</h2>
+            <h2 className="text-xl font-semibold mb-4">Invoice & Owner</h2>
+            <div className="flex flex-col md:flex-row gap-4 items-start">
+              <div className="flex-1">
+                <label className="block text-sm font-medium">Invoice number</label>
+                <input
+                  type="text"
+                  defaultValue={`2025-${selectedPeriod.split('-')[1] || 'XX'}-0001`}
+                  className="w-full p-3 border rounded mt-1"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Set the first invoice number for this period. You can overwrite it anytime.
+                </p>
+              </div>
+              <button className="px-4 py-2 bg-gray-200 rounded-lg flex items-center gap-2 mt-6">
+                Edit owner details
+              </button>
+            </div>
+          </div>
+
+          {/* DATOS DEL PROPIETARIO — CORRECT DATA */}
+          <div className="bg-white p-6 rounded-xl shadow">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Datos del propietario</h2>
+              <button className="px-4 py-2 bg-gray-200 rounded-lg flex items-center gap-2">
+                Editar
+              </button>
+            </div>
             {owner ? (
               <p className="text-sm">
-                {owner.name} ({owner.nif}) — {owner.email} - {owner.phone}<br />
+                {owner.name} ({owner.nif_id}) — {owner.email}
+                <br />
                 {owner.address}
               </p>
             ) : (
-              <p className="text-sm text-gray-500">No owner data found.</p>
+              <p className="text-sm text-gray-500">No owner data found for this flat.</p>
             )}
           </div>
 
+          {/* Documents */}
           <div className="bg-white p-6 rounded-xl shadow">
             <h2 className="text-xl font-semibold mb-4">Documents</h2>
             <div className="flex flex-wrap gap-4">
