@@ -40,36 +40,31 @@ export default function LiquidationPage() {
     return () => subscription.unsubscribe();
   }, [supabase, router]);
 
-  // FETCH OWNER FROM `properties` → `owners`
+  // FETCH OWNER FROM owners.flats JSONB ARRAY
   useEffect(() => {
     const fetchOwner = async () => {
-      // Step 1: Get owner_id from properties
-      const { data: property } = await supabase
-        .from('properties')
-        .select('owner_id')
-        .eq('name', flatName)
+      const { data, error } = await supabase
+        .from('owners')
+        .select('name, address, nif_id, email')
+        .contains('flats', [flatName])
         .single();
 
-      if (!property?.owner_id) {
+      if (error) {
+        console.error('Owner fetch error:', error);
         setOwner(null);
         return;
       }
 
-      // Step 2: Get owner details
-      const { data: ownerData } = await supabase
-        .from('owners')
-        .select('name, address, nif_id, email')
-        .eq('id', property.owner_id)
-        .single();
-
-      if (ownerData) {
+      if (data) {
         setOwner({
-          name: ownerData.name || 'Unknown',
-          nif_id: ownerData.nif_id || '',
-          email: ownerData.email || '',
-          phone: '', // not in table
-          address: ownerData.address || '',
+          name: data.name || 'Unknown',
+          nif_id: data.nif_id || '',
+          email: data.email || '',
+          phone: '',
+          address: data.address || '',
         });
+      } else {
+        setOwner(null);
       }
     };
     fetchOwner();
@@ -249,7 +244,7 @@ export default function LiquidationPage() {
             </div>
           </div>
 
-          {/* INVOICE & OWNER — RESTORED */}
+          {/* INVOICE & OWNER */}
           <div className="bg-white p-6 rounded-xl shadow">
             <h2 className="text-xl font-semibold mb-4">Invoice & Owner</h2>
             <div className="flex flex-col md:flex-row gap-4 items-start">
@@ -270,7 +265,7 @@ export default function LiquidationPage() {
             </div>
           </div>
 
-          {/* DATOS DEL PROPIETARIO — CORRECT DATA */}
+          {/* DATOS DEL PROPIETARIO */}
           <div className="bg-white p-6 rounded-xl shadow">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold">Datos del propietario</h2>
