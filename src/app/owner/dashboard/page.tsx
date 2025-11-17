@@ -30,25 +30,48 @@ export default function OwnerDashboard() {
         return;
       }
 
-      const userEmail = session.user.email;
+      const userEmail = session.user.email?.toLowerCase();
 
-      // Fetch owner info from owners table
-      const { data: ownerData } = await supabase
+      // Step 1: Get all flats owned by this email
+      const { data: ownedProperties } = await supabase
+  .from('properties')
+  .select('id, name')
+  .eq('owner_email', userEmail);
+
+      if (!ownedProperties || ownedProperties.length === 0) {
+        setLoading(false);
+        return;
+      }
+
+      const flatNames = ownedProperties.map(p => p.name);
+
+      // Step 2: Find owner whose flats[] contains any of these flat names
+      const { data: owners } = await supabase
         .from('owners')
-        .select('name, nif_id, email, address')
-        .eq('email', userEmail)
-        .single();
+        .select('name, nif_id, email, address, flats');
 
-      setOwnerInfo(ownerData || null);
+      let matchedOwner = null;
 
-      // Fetch properties
-      const { data } = await supabase
-        .from('properties')
-        .select('id, name')
-        .eq('owner_email', userEmail)
-        .order('name');
+      for (const owner of owners || []) {
+        if (!Array.isArray(owner.flats)) continue;
 
-      setProperties(data || []);
+        const hasMatch = owner.flats.some((flat: string) =>
+          flatNames.includes(flat.trim())
+        );
+
+        if (hasMatch) {
+          matchedOwner = {
+            name: owner.name || 'Unknown',
+            nif_id: owner.nif_id || 'N/A',
+            email: owner.email || 'No email',
+            address: owner.address || 'No address',
+          };
+          break;
+        }
+      }
+
+      setOwnerInfo(matchedOwner);
+      setProperties(ownedProperties);
       setLoading(false);
     };
 
@@ -60,7 +83,7 @@ export default function OwnerDashboard() {
   return (
     <div className="p-8 max-w-6xl mx-auto space-y-8">
       {/* OWNER INFO CARD */}
-      {ownerInfo && (
+      {ownerInfo ? (
         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-8 shadow-lg">
           <h2 className="text-2xl font-bold text-blue-900 mb-6">Datos del propietario</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-lg">
@@ -69,6 +92,12 @@ export default function OwnerDashboard() {
             <div><strong>Email:</strong> {ownerInfo.email}</div>
             <div><strong>Dirección:</strong> {ownerInfo.address}</div>
           </div>
+        </div>
+      ) : (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6">
+          <p className="text-yellow-800">
+            Owner details not found. Please check if your flat is listed in the <code>owners.flats</code> array.
+          </p>
         </div>
       )}
 
