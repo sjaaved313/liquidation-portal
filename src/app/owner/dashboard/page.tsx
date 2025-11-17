@@ -59,15 +59,23 @@ export default function OwnerDashboard() {
         //  flatNames.includes(flat.trim())
         //);
 
-        const hasMatch = owner.flats.some((dbFlat: string) => {
-  const cleanDb = dbFlat.trim()
-    .replace(/[–—]/g, '-')    // ← Replace en-dash & em-dash with normal hyphen
-    .replace(/\s+/g, ' ');
+    const hasMatch = owner.flats.some((dbFlat: string) => {
+          const cleanDb = dbFlat
+            .trim()
+            .replace(/[–—]/g, '-')
+            .replace(/\s+/g, ' ')
+            .toLowerCase();
 
-  return flatNames.some(userFlat =>
-    userFlat.trim().replace(/\s+/g, ' ') === cleanDb
-  );
-});
+          return flatNames.some(userFlat => {
+            const cleanUser = userFlat
+              .trim()
+              .replace(/[–—]/g, '-')
+              .replace(/\s+/g, ' ')
+              .toLowerCase();
+
+            return cleanUser === cleanDb;
+          });
+        });
 
         if (hasMatch) {
           matchedOwner = {
