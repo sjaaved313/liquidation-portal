@@ -186,139 +186,132 @@ export default function LiquidationPage() {
     }
   }, [view, availableMonths]);
 
-  return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8">
-      {/* Filters */}
-      <div className="bg-white p-6 rounded-xl shadow">
-        <h2 className="text-xl font-semibold mb-4">Filters</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">View</label>
-            <select
-              value={view}
-              onChange={(e) => setView(e.target.value as any)}
-              className="w-full p-3 border rounded-lg"
-            >
-              <option>Per month</option>
-              <option>Quarterly</option>
-            </select>
-          </div>
+  // ... (all your existing code until the return statement)
 
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              {view === 'Per month' ? 'Month' : 'Quarter'}
-            </label>
-            <select
-              value={selectedPeriod}
-              onChange={(e) => setSelectedPeriod(e.target.value)}
-              className="w-full p-3 border rounded-lg"
-              disabled={periods.length === 0}
-            >
-              <option value="">Select...</option>
-              {periods.map((p) => (
-                <option key={p} value={p}>
-                  {p.replace('-', ' / ')}
-                </option>
-              ))}
-            </select>
-          </div>
+// REPLACE THE ENTIRE RETURN PART WITH THIS:
 
-          <div>
-            <label className="block text-sm font-medium mb-1">Year</label>
-            <select className="w-full p-3 border rounded-lg" disabled>
-              <option>2025</option>
-            </select>
-          </div>
+return (
+  <div className="p-8 max-w-7xl mx-auto space-y-8">
+    {/* Filters */}
+    <div className="bg-white p-6 rounded-xl shadow">
+      <h2 className="text-xl font-semibold mb-4">Filters</h2>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label className="block text-sm font-medium mb-1">View</label>
+          <select
+            value={view}
+            onChange={(e) => setView(e.target.value as any)}
+            className="w-full p-3 border rounded-lg"
+          >
+            <option>Per month</option>
+            <option>Quarterly</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">
+            {view === 'Per month' ? 'Month' : 'Quarter'}
+          </label>
+          <select
+            value={selectedPeriod}
+            onChange={(e) => setSelectedPeriod(e.target.value)}
+            className="w-full p-3 border rounded-lg"
+            disabled={periods.length === 0}
+          >
+            <option value="">Select...</option>
+            {periods.map((p) => (
+              <option key={p} value={p}>
+                {p.replace('-', ' / ')}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">Year</label>
+          <select className="w-full p-3 border rounded-lg" disabled>
+            <option>2025</option>
+          </select>
         </div>
       </div>
+    </div>
 
-      {loading ? (
-        <p className="text-center text-gray-500">Loading...</p>
-      ) : !stats ? (
-        <p className="text-center text-gray-500">No data for selected period.</p>
-      ) : (
-        <>
-          {/* Inputs & Summary */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="bg-white p-6 rounded-xl shadow">
-              <h2 className="text-xl font-semibold mb-4">Inputs</h2>
-              <InputRow label="Bruto total" value={stats.brutoTotal.toFixed(2)} />
-              <InputRow label="Commission" value={stats.commission.toFixed(2)} />
-              <InputRow label="Extras" value={stats.extras.toFixed(2)} />
-              <InputRow label="IGIC (%)" value="7" />
-            </div>
-
-            <div className="bg-white p-6 rounded-xl shadow">
-              <h2 className="text-xl font-semibold mb-4">Summary</h2>
-              <SummaryRow label="Period" value={selectedPeriod.replace('-', ' / 2025')} />
-              <SummaryRow label="Bruto total" value={`${stats.brutoTotal.toFixed(2)} €`} />
-              <SummaryRow label="Commission" value={`${stats.commission.toFixed(2)} €`} />
-              <SummaryRow label="Extras" value={`${stats.extras.toFixed(2)} €`} />
-              <SummaryRow label="IGIC (7%)" value={`${stats.igic.toFixed(2)} €`} />
-              <div className="mt-6 p-4 bg-green-100 rounded-lg">
-                <SummaryRow label="Owner Netto" value={`${stats.ownerNetto.toFixed(2)} €`} bold highlight />
-              </div>
-            </div>
+    {loading ? (
+      <p className="text-center text-gray-500">Loading...</p>
+    ) : !stats ? (
+      <p className="text-center text-gray-500">No data for selected period.</p>
+    ) : (
+      <>
+        {/* Inputs & Summary */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="bg-white p-6 rounded-xl shadow">
+            <h2 className="text-xl font-semibold mb-4">Inputs</h2>
+            <InputRow label="Bruto total" value={stats.brutoTotal.toFixed(2)} />
+            <InputRow label="Commission" value={stats.commission.toFixed(2)} />
+            <InputRow label="Extras" value={stats.extras.toFixed(2)} />
+            <InputRow label="IGIC (%)" value="7" />
           </div>
 
-          {/* INVOICE & OWNER */}
           <div className="bg-white p-6 rounded-xl shadow">
-            <h2 className="text-xl font-semibold mb-4">Invoice & Owner</h2>
-            <div className="flex flex-col md:flex-row gap-4 items-start">
-              <div className="flex-1">
-                <label className="block text-sm font-medium">Invoice number</label>
-                <input
-                  type="text"
-                  defaultValue={`2025-${selectedPeriod.split('-')[1] || 'XX'}-0001`}
-                  className="w-full p-3 border rounded mt-1"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Set the first invoice number for this period. You can overwrite it anytime.
-                </p>
-              </div>
-              <button className="px-4 py-2 bg-gray-200 rounded-lg flex items-center gap-2 mt-6">
-                Edit owner details
-              </button>
+            <h2 className="text-xl font-semibold mb-4">Summary</h2>
+            <SummaryRow label="Period" value={selectedPeriod.replace('-', ' / 2025')} />
+            <SummaryRow label="Bruto total" value={`${stats.brutoTotal.toFixed(2)} €`} />
+            <SummaryRow label="Commission" value={`${stats.commission.toFixed(2)} €`} />
+            <SummaryRow label="Extras" value={`${stats.extras.toFixed(2)} €`} />
+            <SummaryRow label="IGIC (7%)" value={`${stats.igic.toFixed(2)} €`} />
+            <div className="mt-6 p-4 bg-green-100 rounded-lg">
+              <SummaryRow label="Owner Netto" value={`${stats.ownerNetto.toFixed(2)} €`} bold highlight />
             </div>
           </div>
+        </div>
 
-          {/* DATOS DEL PROPIETARIO */}
-          <div className="bg-white p-6 rounded-xl shadow">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">Datos del propietario</h2>
-              <button className="px-4 py-2 bg-gray-200 rounded-lg flex items-center gap-2">
-                Editar
-              </button>
-            </div>
-            {owner ? (
-              <p className="text-sm">
-                {owner.name} ({owner.nif_id}) — {owner.email}
-                <br />
-                {owner.address}
+        {/* INVOICE & OWNER */}
+        <div className="bg-white p-6 rounded-xl shadow">
+          <h2 className="text-xl font-semibold mb-4">Invoice</h2>
+          <div className="flex flex-col md:flex-row gap-4 items-start">
+            <div className="flex-1">
+              <label className="block text-sm font-medium">Invoice number</label>
+              <input
+                type="text"
+                defaultValue={`2025-${selectedPeriod.split('-')[1] || 'XX'}-0001`}
+                className="w-full p-3 border rounded mt-1"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Set the first invoice number for this period. You can overwrite it anytime.
               </p>
-            ) : (
-              <p className="text-sm text-gray-500">No owner data found for this flat.</p>
-            )}
+            </div>
           </div>
+        </div>
 
-          {/* Documents */}
+        {/* DOCUMENTS — ONLY SHOW IN QUARTERLY + Q3 SELECTED */}
+        {view === 'Quarterly' && selectedPeriod === 'Q3 2025' && (
           <div className="bg-white p-6 rounded-xl shadow">
-            <h2 className="text-xl font-semibold mb-4">Documents</h2>
+            <h2 className="text-xl font-semibold mb-4">Documents (Q3 2025)</h2>
             <div className="flex flex-wrap gap-4">
               <DownloadBtn
                 label="Management Bill (PDF)"
-                href={`/api/pdf/management?flat=${encodeURIComponent(flatName)}&period=${selectedPeriod}`}
+                href={`/api/pdf/management?flat=${encodeURIComponent(flatName)}&period=Q3 2025`}
               />
               <DownloadBtn
-                label="Reservation Statement"
-                href={`/api/excel/reservation?flat=${encodeURIComponent(flatName)}&period=${selectedPeriod}`}
+                label="Reservation Statement (Excel)"
+                href={`/api/excel/reservation?flat=${encodeURIComponent(flatName)}&period=Q3 2025`}
               />
             </div>
           </div>
-        </>
-      )}
-    </div>
-  );
+        )}
+
+        {/* HIDE DOCUMENTS IN MONTHLY OR INCOMPLETE QUARTERS */}
+        {view === 'Per month' && (
+          <div className="bg-gray-50 p-6 rounded-xl text-center">
+            <p className="text-gray-600">
+              Documents are only available in Quarterly view when all 3 months are complete.
+            </p>
+          </div>
+        )}
+      </>
+    )}
+  </div>
+);
 }
 
 const InputRow = ({ label, value }: { label: string; value: string }) => (
