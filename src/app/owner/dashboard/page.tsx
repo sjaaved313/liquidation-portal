@@ -20,7 +20,7 @@ export default function OwnerDashboard() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [ownerInfo, setOwnerInfo] = useState<OwnerInfo | null>(null);
   const [loading, setLoading] = useState(true);
-  const [session, setSession] = useState<any>(null);
+  const [loginEmail, setLoginEmail] = useState<string>('');
   const supabase = createSupabaseClient();
 
   useEffect(() => {
@@ -31,30 +31,29 @@ export default function OwnerDashboard() {
         return;
       }
 
-      setSession(session);
-
-      const userEmail = session.user.email;
+      const email = session.user.email.toLowerCase().trim();
+      setLoginEmail(session.user.email);
 
       // Get properties
       const { data: ownedProperties } = await supabase
         .from('properties')
         .select('id, name')
-        .eq('owner_email', userEmail);
+        .eq('owner_email', session.user.email);
 
       setProperties(ownedProperties || []);
 
-      // Match owner by email
+      // Match owner by email (case-insensitive)
       const { data: ownerData } = await supabase
         .from('owners')
         .select('name, nif_id, email, address')
-        .ilike('email', userEmail)
+        .ilike('email', email)
         .single();
 
       if (ownerData) {
         setOwnerInfo({
           name: ownerData.name || 'Unknown',
           nif_id: ownerData.nif_id || 'N/A',
-          email: ownerData.email || 'No email',
+          email: ownerData.email || '',
           address: ownerData.address || 'No address',
         });
       }
@@ -83,9 +82,14 @@ export default function OwnerDashboard() {
         <div className="bg-red-50 border border-red-300 rounded-xl p-6">
           <p className="text-red-800 font-medium">Owner details not found.</p>
           <p className="text-sm text-red-700 mt-2">
-            Make sure the <code>email</code> field in the <code>owners</code> table matches your login email:
+            Your login email: <strong>{loginEmail}</strong>
             <br />
-            <strong>{session?.user?.email || 'No email detected'}</strong>
+            Run these SQL commands in Supabase:
+            <pre className="block bg-gray-800 text-white p-3 mt-3 rounded text-xs overflow-x-auto">
+{`UPDATE owners 
+SET email = '${loginEmail}'
+WHERE flats @> '["Book Jet - Oasis Corralejo Maxi Pool"]';`}
+            </pre>
           </p>
         </div>
       )}
