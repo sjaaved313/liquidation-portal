@@ -32,7 +32,7 @@ export default function OwnerDashboard() {
 
       const userEmail = session.user.email.toLowerCase();
 
-      // Step 1: Get all properties owned by this email
+      // Get user's properties
       const { data: ownedProperties } = await supabase
         .from('properties')
         .select('id, name')
@@ -43,41 +43,45 @@ export default function OwnerDashboard() {
         return;
       }
 
-      // Normalize flat names from properties table
-      const normalizedFlatNames = ownedProperties.map(p =>
+      setProperties(ownedProperties);
+
+      // Normalize user's flat names (aggressive cleaning)
+      const userFlatNames = ownedProperties.map(p =>
         p.name
+          .replace(/[\u2013\u2014]/g, '-')  // en-dash, em-dash
+          .replace(/[\u00A0]/g, ' ')        // non-breaking space
+          .replace(/\s+/g, ' ')
           .trim()
-          .replace(/[–—]/g, '-')     // en-dash, em-dash → normal hyphen
-          .replace(/\s+/g, ' ')      // multiple spaces → one
           .toLowerCase()
       );
 
-      setProperties(ownedProperties);
-
-      // Step 2: Search in owners table
+      // Get all owners
       const { data: owners } = await supabase
         .from('owners')
         .select('name, nif_id, email, address, flats');
 
-      if (!owners || owners.length === 0) {
+      if (!owners) {
         setLoading(false);
         return;
       }
 
       for (const owner of owners) {
-        if (!Array.isArray(owner.flats) || owner.flats.length === 0) continue;
+        if (!Array.isArray(owner.flats)) continue;
 
-        const hasMatch = owner.flats.some((dbFlat: string) => {
-          const normalizedDbFlat = dbFlat
-            .trim()
-            .replace(/[–—]/g, '-')
+        const matchFound = owner.flats.some((dbFlat: any) => {
+          if (typeof dbFlat !== 'string') return false;
+
+          const cleanDbFlat = dbFlat
+            .replace(/[\u2013\u2014]/g, '-')
+            .replace(/[\u00A0]/g, ' ')
             .replace(/\s+/g, ' ')
+            .trim()
             .toLowerCase();
 
-          return normalizedFlatNames.includes(normalizedDbFlat);
+          return userFlatNames.includes(cleanDbFlat);
         });
 
-        if (hasMatch) {
+        if (matchFound) {
           setOwnerInfo({
             name: owner.name || 'Unknown',
             nif_id: owner.nif_id || 'N/A',
@@ -98,7 +102,6 @@ export default function OwnerDashboard() {
 
   return (
     <div className="p-8 max-w-6xl mx-auto space-y-8">
-      {/* OWNER INFO CARD */}
       {ownerInfo ? (
         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-8 shadow-lg">
           <h2 className="text-2xl font-bold text-blue-900 mb-6">Datos del propietario</h2>
@@ -110,9 +113,13 @@ export default function OwnerDashboard() {
           </div>
         </div>
       ) : (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6">
-          <p className="text-yellow-800">
-            Owner details not found. Please check if your flat is listed in the <code>owners.flats</code> array.
+        <div className="bg-red-50 border border-red-300 rounded-xl p-6">
+          <p className="text-red-800 font-medium">
+            Owner details not found.
+          </p>
+          <p className="text-sm text-red-700 mt-2">
+            Check: <code>properties.owner_email</code> matches your login email<br />
+            And flat name in <code>owners.flats</code> exactly matches <code>properties.name</code>
           </p>
         </div>
       )}
