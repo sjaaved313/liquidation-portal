@@ -20,6 +20,7 @@ export default function OwnerDashboard() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [ownerInfo, setOwnerInfo] = useState<OwnerInfo | null>(null);
   const [loading, setLoading] = useState(true);
+  const [session, setSession] = useState<any>(null);
   const supabase = createSupabaseClient();
 
   useEffect(() => {
@@ -30,66 +31,32 @@ export default function OwnerDashboard() {
         return;
       }
 
-      const userEmail = session.user.email.toLowerCase();
+      setSession(session);
 
-      // Get user's properties
+      const userEmail = session.user.email;
+
+      // Get properties
       const { data: ownedProperties } = await supabase
         .from('properties')
         .select('id, name')
         .eq('owner_email', userEmail);
 
-      if (!ownedProperties || ownedProperties.length === 0) {
-        setLoading(false);
-        return;
-      }
+      setProperties(ownedProperties || []);
 
-      setProperties(ownedProperties);
-
-      // Normalize user's flat names (aggressive cleaning)
-      const userFlatNames = ownedProperties.map(p =>
-        p.name
-          .replace(/[\u2013\u2014]/g, '-')  // en-dash, em-dash
-          .replace(/[\u00A0]/g, ' ')        // non-breaking space
-          .replace(/\s+/g, ' ')
-          .trim()
-          .toLowerCase()
-      );
-
-      // Get all owners
-      const { data: owners } = await supabase
+      // Match owner by email
+      const { data: ownerData } = await supabase
         .from('owners')
-        .select('name, nif_id, email, address, flats');
+        .select('name, nif_id, email, address')
+        .ilike('email', userEmail)
+        .single();
 
-      if (!owners) {
-        setLoading(false);
-        return;
-      }
-
-      for (const owner of owners) {
-        if (!Array.isArray(owner.flats)) continue;
-
-        const matchFound = owner.flats.some((dbFlat: any) => {
-          if (typeof dbFlat !== 'string') return false;
-
-          const cleanDbFlat = dbFlat
-            .replace(/[\u2013\u2014]/g, '-')
-            .replace(/[\u00A0]/g, ' ')
-            .replace(/\s+/g, ' ')
-            .trim()
-            .toLowerCase();
-
-          return userFlatNames.includes(cleanDbFlat);
+      if (ownerData) {
+        setOwnerInfo({
+          name: ownerData.name || 'Unknown',
+          nif_id: ownerData.nif_id || 'N/A',
+          email: ownerData.email || 'No email',
+          address: ownerData.address || 'No address',
         });
-
-        if (matchFound) {
-          setOwnerInfo({
-            name: owner.name || 'Unknown',
-            nif_id: owner.nif_id || 'N/A',
-            email: owner.email || 'No email',
-            address: owner.address || 'No address',
-          });
-          break;
-        }
       }
 
       setLoading(false);
@@ -114,12 +81,11 @@ export default function OwnerDashboard() {
         </div>
       ) : (
         <div className="bg-red-50 border border-red-300 rounded-xl p-6">
-          <p className="text-red-800 font-medium">
-            Owner details not found.
-          </p>
+          <p className="text-red-800 font-medium">Owner details not found.</p>
           <p className="text-sm text-red-700 mt-2">
-            Check: <code>properties.owner_email</code> matches your login email<br />
-            And flat name in <code>owners.flats</code> exactly matches <code>properties.name</code>
+            Make sure the <code>email</code> field in the <code>owners</code> table matches your login email:
+            <br />
+            <strong>{session?.user?.email || 'No email detected'}</strong>
           </p>
         </div>
       )}
