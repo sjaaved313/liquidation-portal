@@ -55,9 +55,19 @@ export default function OwnerDashboard() {
       for (const owner of owners || []) {
         if (!Array.isArray(owner.flats)) continue;
 
-        const hasMatch = owner.flats.some((flat: string) =>
-          flatNames.includes(flat.trim())
-        );
+        //const hasMatch = owner.flats.some((flat: string) =>
+        //  flatNames.includes(flat.trim())
+        //);
+
+        const hasMatch = owner.flats.some((dbFlat: string) => {
+  const cleanDb = dbFlat.trim()
+    .replace(/[–—]/g, '-')    // ← Replace en-dash & em-dash with normal hyphen
+    .replace(/\s+/g, ' ');
+
+  return flatNames.some(userFlat =>
+    userFlat.trim().replace(/\s+/g, ' ') === cleanDb
+  );
+});
 
         if (hasMatch) {
           matchedOwner = {
