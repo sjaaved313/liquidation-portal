@@ -25,71 +25,69 @@ export default function OwnerDashboard() {
   useEffect(() => {
     const init = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      if (!session?.user?.email) {
         setLoading(false);
         return;
       }
 
-      const userEmail = session.user.email?.toLowerCase();
+      const userEmail = session.user.email.toLowerCase();
 
-      // Step 1: Get all flats owned by this email
+      // Step 1: Get all properties owned by this email
       const { data: ownedProperties } = await supabase
-  .from('properties')
-  .select('id, name')
-  .eq('owner_email', userEmail);
+        .from('properties')
+        .select('id, name')
+        .eq('owner_email', userEmail);
 
       if (!ownedProperties || ownedProperties.length === 0) {
         setLoading(false);
         return;
       }
 
-      const flatNames = ownedProperties.map(p => p.name);
+      // Normalize flat names from properties table
+      const normalizedFlatNames = ownedProperties.map(p =>
+        p.name
+          .trim()
+          .replace(/[–—]/g, '-')     // en-dash, em-dash → normal hyphen
+          .replace(/\s+/g, ' ')      // multiple spaces → one
+          .toLowerCase()
+      );
 
-      // Step 2: Find owner whose flats[] contains any of these flat names
+      setProperties(ownedProperties);
+
+      // Step 2: Search in owners table
       const { data: owners } = await supabase
         .from('owners')
         .select('name, nif_id, email, address, flats');
 
-      let matchedOwner = null;
+      if (!owners || owners.length === 0) {
+        setLoading(false);
+        return;
+      }
 
-      for (const owner of owners || []) {
-        if (!Array.isArray(owner.flats)) continue;
+      for (const owner of owners) {
+        if (!Array.isArray(owner.flats) || owner.flats.length === 0) continue;
 
-        //const hasMatch = owner.flats.some((flat: string) =>
-        //  flatNames.includes(flat.trim())
-        //);
-
-    const hasMatch = owner.flats.some((dbFlat: string) => {
-          const cleanDb = dbFlat
+        const hasMatch = owner.flats.some((dbFlat: string) => {
+          const normalizedDbFlat = dbFlat
             .trim()
             .replace(/[–—]/g, '-')
             .replace(/\s+/g, ' ')
             .toLowerCase();
 
-          return flatNames.some(userFlat => {
-            const cleanUser = userFlat
-              .trim()
-              .replace(/[–—]/g, '-')
-              .replace(/\s+/g, ' ')
-              .toLowerCase();
-
-            return cleanUser === cleanDb;
-          });
+          return normalizedFlatNames.includes(normalizedDbFlat);
         });
 
         if (hasMatch) {
-          matchedOwner = {
+          setOwnerInfo({
             name: owner.name || 'Unknown',
             nif_id: owner.nif_id || 'N/A',
             email: owner.email || 'No email',
             address: owner.address || 'No address',
-          };
+          });
           break;
         }
       }
 
-      setOwnerInfo(matchedOwner);
-      setProperties(ownedProperties);
       setLoading(false);
     };
 
