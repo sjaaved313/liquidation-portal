@@ -10,7 +10,7 @@ export default function AdminLogin() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   
-  const supabase = createSupabaseClient();  // ← YOUR CLIENT — PERFECT
+  const supabase = createSupabaseClient();
   const router = useRouter();
 
   const handleLogin = async () => {
@@ -27,13 +27,15 @@ export default function AdminLogin() {
     if (error) {
       console.error('Login failed:', error);
       setMessage('Invalid email or password');
+      setLoading(false);
     } else {
       console.log('Admin logged in:', data.user.email);
+      
       router.push('/admin');
-      router.refresh(); // Forces Next.js to re-check auth state
-    }
+      router.refresh(); // ← THIS IS THE FINAL FIX
 
-    setLoading(false);
+      setLoading(false);
+    }
   };
 
   return (
