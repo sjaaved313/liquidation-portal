@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { createSupabaseClient } from '@/lib/supabase.client';
-import { useRouter } from 'next/navigation';
 
 export default function AdminLogin() {
   const [email, setEmail] = useState('');
@@ -11,7 +10,6 @@ export default function AdminLogin() {
   const [message, setMessage] = useState('');
   
   const supabase = createSupabaseClient();
-  const router = useRouter();
 
   const handleLogin = async () => {
     if (!email || !password) return;
@@ -25,16 +23,13 @@ export default function AdminLogin() {
     });
 
     if (error) {
-      console.error('Login failed:', error);
       setMessage('Invalid email or password');
       setLoading(false);
     } else {
       console.log('Admin logged in:', data.user.email);
       
-      router.push('/admin');
-      router.refresh(); // ← THIS IS THE FINAL FIX
-
-      setLoading(false);
+      // THIS IS THE FINAL MAGIC LINE
+      window.location.href = '/admin';  // Full reload → forces auth detection
     }
   };
 
@@ -47,6 +42,8 @@ export default function AdminLogin() {
 
         <input
           type="email"
+          name="email"
+          id="email"
           placeholder="admin@yourcompany.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
@@ -55,6 +52,8 @@ export default function AdminLogin() {
 
         <input
           type="password"
+          name="password"
+          id="password"
           placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
@@ -75,13 +74,6 @@ export default function AdminLogin() {
             {message}
           </div>
         )}
-
-        <div className="mt-8 text-center text-xs text-gray-500">
-          <p>Make sure you created the user in:</p>
-          <p className="font-mono bg-gray-100 px-3 py-1 rounded mt-2">
-            Supabase → Authentication → Users
-          </p>
-        </div>
       </div>
     </div>
   );
