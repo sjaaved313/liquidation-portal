@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createSupabaseClient } from '@/lib/supabase.client';
 import { useRouter } from 'next/navigation';
 
 export default function AdminLogin() {
@@ -10,8 +10,7 @@ export default function AdminLogin() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   
-  // THIS IS THE CORRECT CLIENT FOR CLIENT-SIDE PASSWORD LOGIN
-  const supabase = createClientComponentClient();
+  const supabase = createSupabaseClient();  // ← YOUR CLIENT — PERFECT
   const router = useRouter();
 
   const handleLogin = async () => {
@@ -21,19 +20,20 @@ export default function AdminLogin() {
     setMessage('');
 
     const { data, error } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
+      email: email.trim().toLowerCase(),
       password,
     });
 
     if (error) {
-      console.error('Login error:', error); // ← Check browser console!
-      setMessage('Invalid credentials: ' + error.message);
-      setLoading(false);
+      console.error('Login failed:', error);
+      setMessage('Invalid email or password');
     } else {
-      console.log('Login success:', data);
+      console.log('Admin logged in:', data.user.email);
       router.push('/admin');
-      router.refresh(); // Important: forces re-render after login
+      router.refresh(); // Forces Next.js to re-check auth state
     }
+
+    setLoading(false);
   };
 
   return (
@@ -74,10 +74,10 @@ export default function AdminLogin() {
           </div>
         )}
 
-        <div className="mt-6 text-center text-sm text-gray-600">
-          <p>Test credentials:</p>
+        <div className="mt-8 text-center text-xs text-gray-500">
+          <p>Make sure you created the user in:</p>
           <p className="font-mono bg-gray-100 px-3 py-1 rounded mt-2">
-            {email || 'your-email'} / {password || 'your-password'}
+            Supabase → Authentication → Users
           </p>
         </div>
       </div>
