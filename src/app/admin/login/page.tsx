@@ -1,4 +1,3 @@
-// src/app/admin/login/page.tsx
 'use client';
 
 import { useState } from 'react';
@@ -9,48 +8,64 @@ export default function AdminLogin() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const router = useRouter();
+  const [message, setMessage] = useState('');
   const supabase = createSupabaseClient();
+  const router = useRouter();
 
   const handleLogin = async () => {
     setLoading(true);
-    setError('');
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    setMessage('');
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
     if (error) {
-      setError(error.message);
+      setMessage('Invalid credentials: ' + error.message);
     } else {
-      router.replace('/admin');
+      router.push('/admin');
     }
     setLoading(false);
   };
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="w-full max-w-md p-8 bg-white rounded-xl shadow-lg">
-        <h1 className="text-3xl font-bold text-center mb-8">Admin Login</h1>
-        <input 
-          type="email" 
-          placeholder="Email" 
-          value={email} 
-          onChange={e => setEmail(e.target.value)} 
-          className="w-full p-3 border rounded-lg mb-3" 
+      <div className="w-full max-w-md p-10 bg-white rounded-2xl shadow-2xl">
+        <h1 className="text-4xl font-bold text-center mb-10 text-blue-900">
+          Admin Login
+        </h1>
+
+        <input
+          type="email"
+          placeholder="admin@yourcompany.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="w-full p-4 border-2 rounded-xl mb-5 text-lg focus:border-blue-500"
         />
-        <input 
-          type="password" 
-          placeholder="Password" 
-          value={password} 
-          onChange={e => setPassword(e.target.value)} 
-          className="w-full p-3 border rounded-lg mb-4" 
+
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="w-full p-4 border-2 rounded-xl mb-8 text-lg focus:border-blue-500"
+          onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
         />
-        <button 
-          onClick={handleLogin} 
-          disabled={loading} 
-          className="w-full bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+
+        <button
+          onClick={handleLogin}
+          disabled={loading || !email || !password}
+          className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-bold py-4 rounded-xl text-lg"
         >
-          {loading ? 'Loading...' : 'Login'}
+          {loading ? 'Logging in...' : 'Login'}
         </button>
-        {error && <p className="text-red-500 text-sm mt-3 text-center">{error}</p>}
+
+        {message && (
+          <div className="mt-6 p-4 bg-red-100 text-red-700 rounded-lg text-center">
+            {message}
+          </div>
+        )}
       </div>
     </div>
   );
