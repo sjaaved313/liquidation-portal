@@ -1,35 +1,38 @@
-'use client';
-
-import Link from 'next/link';
 import { createSupabaseClient } from '@/lib/supabase.client';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
-export default function AdminDashboard() {
+export default async function AdminDashboard() {
   const supabase = createSupabaseClient();
-  const router = useRouter();
+  const { data: { session } } = await supabase.auth.getSession();
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push('/admin/login');
-  };
+  // IF NOT LOGGED IN → REDIRECT TO LOGIN (SERVER-SIDE)
+  if (!session) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-100">
+        <div className="text-center">
+          <p className="text-2xl mb-6">Redirecting to login...</p>
+          <script dangerouslySetInnerHTML={{ __html: `window.location.href = '/admin/login'` }} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-blue-900 text-white p-6 shadow-lg">
         <div className="max-w-6xl mx-auto flex justify-between items-center">
           <h1 className="text-3xl font-bold">Admin Panel</h1>
-          <button
-            onClick={handleLogout}
-            className="bg-red-600 hover:bg-red-700 px-6 py-3 rounded-lg font-medium"
-          >
-            Logout
-          </button>
+          <form action="/auth/signout" method="post">
+            <button className="bg-red-600 hover:bg-red-700 px-6 py-3 rounded-lg font-medium">
+              Logout
+            </button>
+          </form>
         </div>
       </div>
 
       <div className="max-w-6xl mx-auto p-10">
         <h2 className="text-4xl font-bold text-center mb-12 text-gray-800">
-          Bienvenido, Administrador
+          Bienvenido, {session.user.email}
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
