@@ -7,33 +7,35 @@ export default async function AdminDashboard() {
 
   if (!session) {
     return (
-      <html>
-        <body>
-          <script dangerouslySetInnerHTML={{
-            __html: `window.location.href = '/admin/login'`
-          }} />
-        </body>
-      </html>
+      <html><body>
+        <script dangerouslySetInnerHTML={{ __html: `location.href='/admin/login'` }} />
+      </body></html>
     );
   }
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    window.location.href = '/admin/login';
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-blue-900 text-white p-8">
         <div className="max-w-6xl mx-auto flex justify-between items-center">
           <h1 className="text-4xl font-bold">Admin Panel</h1>
-          <form action="/api/auth/signout" method="post">
-            <button className="bg-red-600 hover:bg-red-700 px-8 py-3 rounded-xl text-lg font-bold">
-              Logout
-            </button>
-          </form>
+          <button
+            onClick={handleLogout}
+            className="bg-red-600 hover:bg-red-700 px-8 py-3 rounded-xl text-lg font-bold"
+          >
+            Logout
+          </button>
         </div>
       </div>
 
       <div className="max-w-6xl mx-auto p-12 text-center">
-        <h2 className="text-4xl font-bold mb-12">Bienvenido, {session.user.email}</h2>
+        <h2 className="text-4xl font-bold mb-12">Welcome, {session.user.email}</h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-12 max-w-5xl mx-auto">
           <Link
             href="/admin/upload"
             className="block p-20 bg-white rounded-3xl shadow-2xl hover:shadow-3xl transition-all border-4 border-transparent hover:border-green-600 transform hover:-translate-y-6"

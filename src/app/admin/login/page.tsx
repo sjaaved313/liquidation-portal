@@ -12,16 +12,17 @@ export default function AdminLogin() {
 
   const handleLogin = async () => {
     setLoading(true);
+
     const { error } = await supabase.auth.signInWithPassword({
       email: email.trim().toLowerCase(),
       password,
     });
 
     if (error) {
-      alert('Invalid credentials');
+      alert('Invalid email or password');
       setLoading(false);
     } else {
-      // THIS IS THE ONLY LINE THAT WORKS 100%
+      // THIS LINE IS THE ONLY ONE THAT WORKS 100% IN ALL CASES
       window.location.replace('/admin');
     }
   };
@@ -33,7 +34,7 @@ export default function AdminLogin() {
 
         <input
           type="email"
-          placeholder="Email"
+          placeholder="sjaaved313@gmail.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className="w-full p-4 border-2 rounded-xl mb-5 text-lg focus:border-blue-500 outline-none"
@@ -50,8 +51,8 @@ export default function AdminLogin() {
 
         <button
           onClick={handleLogin}
-          disabled={loading || !email || !password}
-          className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-bold py-4 rounded-xl text-lg transition"
+          disabled={loading}
+          className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-70 text-white font-bold py-4 rounded-xl text-lg transition"
         >
           {loading ? 'Logging in...' : 'Login'}
         </button>
