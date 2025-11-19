@@ -1,57 +1,50 @@
-import { createSupabaseClient } from '@/lib/supabase.client';
 import Link from 'next/link';
+import { createSupabaseClient } from '@/lib/supabase.client';
+import LogoutButton from './LogoutButton';
 
 export default async function AdminDashboard() {
   const supabase = createSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { user } } = await supabase.auth.getUser();
 
-  if (!session) {
+  // If no user → redirect immediately go to login
+  if (!user) {
     return (
-      <html><body>
-        <script dangerouslySetInnerHTML={{ __html: `location.href='/admin/login'` }} />
-      </body></html>
+      <html>
+        <body>
+          <script dangerouslySetInnerHTML={{ __html: `location.href="/admin/login"` }} />
+        </body>
+      </html>
     );
   }
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    window.location.href = '/admin/login';
-  };
-
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="bg-blue-900 text-white p-8">
-        <div className="max-w-6xl mx-auto flex justify-between items-center">
+      <div className="bg-blue-900 p-8 text-white">
+        <div className="mx-auto flex max-w-6xl items-center justify-between">
           <h1 className="text-4xl font-bold">Admin Panel</h1>
-          <button
-            onClick={handleLogout}
-            className="bg-red-600 hover:bg-red-700 px-8 py-3 rounded-xl text-lg font-bold"
-          >
-            Logout
-          </button>
+          <LogoutButton />
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto p-12 text-center">
-        <h2 className="text-4xl font-bold mb-12">Welcome, {session.user.email}</h2>
+      <div className="mx-auto max-w-6xl p-12 text-center">
+        <h2 className="mb-12 text-4xl font-bold">Welcome, {user.email}</h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-12 max-w-5xl mx-auto">
+        <div className="grid grid-cols-1 gap-12 md:grid-cols-3">
           <Link
             href="/admin/upload"
-            className="block p-20 bg-white rounded-3xl shadow-2xl hover:shadow-3xl transition-all border-4 border-transparent hover:border-green-600 transform hover:-translate-y-6"
+            className="block rounded-3xl bg-white p-20 shadow-2xl transition-all hover:-translate-y-6 hover:border-4 hover:border-green-600"
           >
-            <div className="text-8xl mb-6">Upload</div>
+            <div className="mb-6 text-8xl">Upload</div>
             <h3 className="text-3xl font-bold text-green-700">Subir Reservas</h3>
-            <p className="text-gray-600 mt-4 text-xl">Cargar archivo Excel</p>
           </Link>
 
-          <div className="p-20 bg-gray-100 rounded-3xl shadow-xl opacity-50">
-            <div className="text-8xl mb-6">Chart</div>
+          <div className="rounded-3xl bg-gray-100 p-20 opacity-50">
+            <div className="mb-6 text-8xl">Chart</div>
             <h3 className="text-3xl font-bold text-gray-500">Estadísticas</h3>
           </div>
 
-          <div className="p-20 bg-gray-100 rounded-3xl shadow-xl opacity-50">
-            <div className="text-8xl mb-6">Users</div>
+          <div className="rounded-3xl bg-gray-100 p-20 opacity-50">
+            <div className="mb-6 text-8xl">Users</div>
             <h3 className="text-3xl font-bold text-gray-500">Propietarios</h3>
           </div>
         </div>
