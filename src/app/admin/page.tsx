@@ -4,16 +4,17 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { createSupabaseClient } from '@/lib/supabase.client';
 
-export default function AdminPage() {
+export default function AdminDashboard() {
   const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-
   const supabase = createSupabaseClient();
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
-      setUser(data.user);
-      setLoading(false);
+      if (!data.user) {
+        window.location.href = '/admin/login';
+      } else {
+        setUser(data.user);
+      }
     });
   }, [supabase]);
 
@@ -22,15 +23,11 @@ export default function AdminPage() {
     window.location.href = '/admin/login';
   };
 
-  if (loading) return <div className="p-20 text-center">Loading...</div>;
-  if (!user) {
-    window.location.href = '/admin/login';
-    return null;
-  }
+  if (!user) return <div className="p-20 text-center text-2xl">Loading...</div>;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
-      <div className="bg-blue-900 text-white p-8 shadow-xl">
+      <div className="bg-blue-900 text-white p-10 shadow-2xl">
         <div className="max-w-6xl mx-auto flex justify-between items-center">
           <h1 className="text-4xl font-bold">Admin Panel</h1>
           <button onClick={logout} className="bg-red-600 hover:bg-red-700 px-8 py-4 rounded-xl text-xl font-bold">
@@ -39,21 +36,18 @@ export default function AdminPage() {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto p-12">
-        <h2 className="text-4xl font-bold text-center mb-12 text-blue-900">
-          Welcome, {user.email}
+      <div className="max-w-6xl mx-auto p-16 text-center">
+        <h2 className="text-4xl font-bold mb-16 text-blue-900">
+          Welcome, {user.email}!
         </h2>
 
-        <div className="grid place-items-center">
-          <Link
-            href="/admin/upload"
-            className="block w-96 p-20 bg-white rounded-3xl shadow-2xl text-center transform hover:scale-105 hover:shadow-3xl transition-all duration-300 border-8 border-transparent hover:border-green-600"
-          >
+        <Link href="/admin/upload">
+          <div className="inline-block bg-white rounded-3xl p-28 shadow-3xl hover:shadow-4xl transition-all hover:scale-105 border-8 border-transparent hover:border-green-600 cursor-pointer">
             <div className="text-9xl mb-8">Upload</div>
             <h3 className="text-4xl font-bold text-green-700">Subir Reservas</h3>
-            <p className="text-xl text-gray-600 mt-6">Cargar archivo Excel</p>
-          </Link>
-        </div>
+            <p className="text-2xl text-gray-600 mt-6">Cargar archivo Excel</p>
+          </div>
+        </Link>
       </div>
     </div>
   );
