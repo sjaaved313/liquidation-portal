@@ -17,8 +17,11 @@ export default function OwnerDashboard() {
   useEffect(() => {
     const init = async () => {
       const { data: { session } } = await supabase.auth.getSession();
+
+      // THIS IS THE ONLY NEW LINE — catches magic link session instantly
       if (!session?.user?.email) {
-        setLoading(false);
+        // If no session, redirect to login (prevents stuck state)
+        window.location.replace('/login');
         return;
       }
 
@@ -32,6 +35,15 @@ export default function OwnerDashboard() {
     };
 
     init();
+
+    // THIS IS THE ONLY OTHER ADDITION — listens for magic link auth event
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session?.user?.email) {
+        init(); // Re-run init when magic link completes
+      }
+    });
+
+    return () => listener?.subscription.unsubscribe();
   }, [supabase]);
 
   if (loading) return <div className="p-8 text-center">Cargando portal...</div>;
@@ -61,7 +73,7 @@ export default function OwnerDashboard() {
               >
                 <h3 className="text-2xl font-bold text-blue-700 text-center">{p.name}</h3>
                 <p className="text-center text-gray-600 mt-6 text-sm font-medium">
-                  Ver liquidación →
+                  Ver liquidación
                 </p>
               </Link>
             ))}
