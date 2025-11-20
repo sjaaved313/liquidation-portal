@@ -7,21 +7,16 @@ export default function Login() {
   useEffect(() => {
     const supabase = createSupabaseClient();
 
-    // This catches magic link verification instantly
-    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        window.location.replace('/owner/dashboard');
-      }
-    });
-
-    // Also check if session already exists
+    // This runs ONCE when magic link lands here with #access_token=…
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
+        // Instant redirect — no waiting, no flicker
         window.location.replace('/owner/dashboard');
+      } else {
+        // No token → show normal login form (you already have it working)
+        window.location.replace('/'); // or keep the form if you prefer
       }
     });
-
-    return () => listener?.subscription.unsubscribe();
   }, []);
 
   return (
