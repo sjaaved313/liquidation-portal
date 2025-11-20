@@ -1,60 +1,40 @@
 // src/app/login/page.tsx
 'use client';
 
-import { useState } from 'react';
+import { useEffect } from 'react';
 import { createSupabaseClient } from '@/lib/supabase.client';
 
 export default function Login() {
-  const [email, setEmail] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
+  useEffect(() => {
+    const supabase = createSupabaseClient();
 
-  const supabase = createSupabaseClient();
-
-
-  const handleLogin = async () => {
-    setLoading(true);
-    setMessage('');
-
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/owner/dashboard`,
-      },
+    // Check if user is already signed in (magic link case)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        // MAGIC LINK SUCCESS → redirect straight to owner dashboard
+        window.location.replace('/owner/dashboard');
+      }
     });
 
-    setMessage(error ? error.message : '¡Enlace mágico enviado! Revisa tu correo.');
-    setLoading(false);
-  };
+    // Listen for auth changes (covers both magic link and future logins)
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        window.location.replace('/owner/dashboard');
+      }
+    });
+
+    return () => listener.subscription.unsubscribe();
+  }, []);
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="w-full max-w-md p-8 bg-white rounded-xl shadow-lg">
-        <h1 className="text-3xl font-bold text-center mb-8">Iniciar Sesión</h1>
-        <p className="text-center text-gray-600 mb-6">
-          Ingresa tu correo para recibir un enlace de acceso
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-indigo-50 to-blue-100">
+      <div className="w-full max-w-md rounded-2xl bg-white p-12 shadow-2xl text-center">
+        <h1 className="mb-8 text-4xl font-bold text-indigo-900">Checking your magic link...</h1>
+        <div className="text-6xl">Loading...</div>
+        <p className="mt-8 text-lg text-gray-600">
+          If nothing happens, <a href="/owner/dashboard" className="text-blue-600 underline">click here</a>
         </p>
-        <input
-          type="email"
-          placeholder="Correo"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full p-3 border rounded-lg mb-4"
-        />
-        <button
-          onClick={handleLogin}
-          disabled={loading || !email}
-          className="w-full bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 disabled:opacity-50"
-        >
-          {loading ? 'Enviando...' : 'Enviar Enlace Mágico'}
-        </button>
-        {message && (
-          <p className={`mt-4 text-center ${message.includes('Error') ? 'text-red-500' : 'text-green-600'}`}>
-            {message}
-          </p>
-        )}
       </div>
     </div>
   );
-  
 }
