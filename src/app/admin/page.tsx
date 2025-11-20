@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createSupabaseClient } from '@/lib/supabase.client';
-import UploadButton from '@/components/uploadButton';  // ← EXACT filename in your repo
+import UploadButton from '@/components/UploadButton';  // ← THIS IS THE REAL FILE NAME
 
 export default function AdminDashboard() {
   const [user, setUser] = useState<any>(null);
