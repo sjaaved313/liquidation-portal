@@ -1,0 +1,37 @@
+import { createMiddlewareClient } from '@supabase/ssr';
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+
+export async function middleware(req: NextRequest) {
+  const res = NextResponse.next();
+  const supabase = createMiddlewareClient({ req, res });
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  const url = req.nextUrl;
+
+  // ALLOW ADMIN PATHS FOR ANY LOGGED-IN USER
+  if (url.pathname.startsWith('/admin')) {
+    if (session) {
+      return res; // Let logged-in user access /admin
+    } else {
+      return NextResponse.redirect(new URL('/admin/login', req.url));
+    }
+  }
+
+  // OWNER PATHS — keep your existing logic
+  if (url.pathname.startsWith('/owner')) {
+    if (!session) {
+      return NextResponse.redirect(new URL('/login', req.url));
+    }
+    // Add your owner check here if needed
+  }
+
+  return res;
+}
+
+export const config = {
+  matcher: ['/admin/:path*', '/owner/:path*'],
+};
