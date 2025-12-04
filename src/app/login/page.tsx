@@ -11,26 +11,39 @@ const supabase = createClient(
 
 export default function Login() {
   useEffect(() => {
-    // Check session immediately
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // This is the ONLY method that works 100% on Vercel with magic link
+    const handleHash = async () => {
+      const hash = window.location.hash.substring(1);
+      if (hash) {
+        const params = new URLSearchParams(hash);
+        const access_token = params.get('access_token');
+        const refresh_token = params.get('refresh_token');
+
+        if (access_token && refresh_token) {
+          await supabase.auth.setSession({
+            access_token,
+            refresh_token,
+          });
+          window.location.replace('/owner/dashboard');
+          return;
+        }
+      }
+
+      // If no hash, just check session normally
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        window.location.replace('/owner/dashboard');
+      }
+    };
+
+    handleHash();
+
+    // Also listen for auth changes
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
       if (session) {
         window.location.replace('/owner/dashboard');
       }
     });
-
-    // Listen for ANY auth changes (this catches the hash on Vercel)
-    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        if (session) {
-          window.location.replace('/owner/dashboard');
-        }
-      }
-    });
-
-    // Also manually process the hash on page load (Vercel needs this)
-    if (window.location.hash) {
-      supabase.auth.exchangeCodeForSession(window.location.hash.substring(1));
-    }
 
     return () => listener?.subscription.unsubscribe();
   }, []);
