@@ -15,10 +15,10 @@ export async function GET(request: Request) {
     const supabase = createRouteHandlerClient({ cookies });
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     
-    if (error) {
-      console.error('Auth error:', error);
-      return NextResponse.redirect(new URL('/login?error=auth_failed', requestUrl.origin));
-    }
+  if (error) {
+  console.error('Auth exchange error:', error.message);
+  return NextResponse.redirect(new URL('/login?error=' + encodeURIComponent(error.message), requestUrl.origin));
+   }
   }
 
   // SUCCESS — redirect to dashboard
