@@ -16,19 +16,16 @@ export default function OwnerDashboard() {
 
   useEffect(() => {
     const init = async () => {
-            const { data: { session }, error } = await supabase.auth.getSession();
+      const { data: { session }, error } = await supabase.auth.getSession();
 
-      // THIS IS THE MAGIC LINE — fixes Vercel session issue
+      // FINAL FIX — stops redirect loop on Vercel
       if (error || !session || !session.user) {
         console.log('No valid session → redirecting to login');
         window.location.replace('/login');
         return;
       }
 
-      // ADD THIS LINE — prevents flash and double redirect
-      if (session.user.email) {
-        console.log('Session valid:', session.user.email);
-      }
+      console.log('Logged in as:', session.user.email);
 
       console.log('User logged in:', session.user.email);
 
