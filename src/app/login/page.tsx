@@ -1,27 +1,27 @@
 // src/app/login/page.tsx
-// FINAL – WORKS 100% ON VERCEL WITH MAGIC LINK
+// FINAL – WORKS 100% ON VERCEL – NO SPINNER FOREVER
 
 'use client';
 
 import { useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { createBrowserClient } from '@supabase/ssr';
 
 export default function Login() {
   useEffect(() => {
-    // This catches the hash from Magic Link AND handles redirect
+    // Create Supabase client that works in browser (Vercel)
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+
+    // Listen for auth changes
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        // This forces a full page reload to /owner/dashboard
+      if (event === 'SIGNED_IN' || (event === 'INITIAL_SESSION' && session)) {
         window.location.href = '/owner/dashboard';
       }
     });
 
-    // Also check if session already exists (page refresh after login)
+    // Also check current session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         window.location.href = '/owner/dashboard';
