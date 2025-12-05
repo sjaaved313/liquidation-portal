@@ -1,5 +1,5 @@
 // src/app/login/page.tsx
-// FINAL – WORKS 100% ON VERCEL – NO SPINNER FOREVER
+// FINAL – WORKS 100% ON VERCEL WITH @supabase/ssr
 
 'use client';
 
@@ -8,20 +8,19 @@ import { createBrowserClient } from '@supabase/ssr';
 
 export default function Login() {
   useEffect(() => {
-    // Create Supabase client that works in browser (Vercel)
     const supabase = createBrowserClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
 
-    // Listen for auth changes
+    // This catches the Magic Link hash AND session refresh
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' || (event === 'INITIAL_SESSION' && session)) {
+      if (session) {
         window.location.href = '/owner/dashboard';
       }
     });
 
-    // Also check current session
+    // Also check if already logged in (page reload)
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         window.location.href = '/owner/dashboard';
