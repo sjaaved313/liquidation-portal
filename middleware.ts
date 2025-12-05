@@ -1,13 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { createServerClient } from '@supabase/ssr';
 
 export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
+  const response = NextResponse.next({
+    request,
   });
 
+  // Skip /admin/login to avoid loop
+  if (request.nextUrl.pathname === '/admin/login') {
+    return response;
+  }
+
+  // Create Supabase client with cookies
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -16,15 +20,11 @@ export async function middleware(request: NextRequest) {
         get(name: string) {
           return request.cookies.get(name)?.value;
         },
-        set(name: string, value: string, options: CookieOptions) {
+        set(name: string, value: string, options: any) {
           request.cookies.set({
             name,
             value,
             ...options,
-          });
-          response = NextResponse.next({
-            request,
-            headers: response.headers,
           });
           response.cookies.set({
             name,
@@ -32,15 +32,11 @@ export async function middleware(request: NextRequest) {
             ...options,
           });
         },
-        remove(name: string, options: CookieOptions) {
+        remove(name: string, options: any) {
           request.cookies.set({
             name,
             value: '',
             ...options,
-          });
-          response = NextResponse.next({
-            request,
-            headers: response.headers,
           });
           response.cookies.set({
             name,
@@ -52,22 +48,11 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  const { data: { session } } = await supabase.auth.getSession();
 
-  const pathname = request.nextUrl.pathname;
-
-  // Protect admin routes
-  if (pathname.startsWith('/admin') && !pathname.includes('/login')) {
-    if (!session) {
-      return NextResponse.redirect(new URL('/admin/login', request.url));
-    }
-  }
-
-  // Protect owner routes
-  if (pathname.startsWith('/owner') && !session) {
-    return NextResponse.redirect(new URL('/login', request.url));
+  // Protect /admin routes
+  if (request.nextUrl.pathname.startsWith('/admin') && !session) {
+    return NextResponse.redirect(new URL('/admin/login', request.url));
   }
 
   return response;
@@ -76,6 +61,5 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     '/admin/:path*',
-    '/owner/:path*',
   ],
 };
