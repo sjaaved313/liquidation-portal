@@ -16,14 +16,16 @@ export default function OwnerDashboard() {
 
   useEffect(() => {
     const init = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session }, error } = await supabase.auth.getSession();
 
-      // THIS IS THE ONLY NEW LINE — catches magic link session instantly
-      if (!session?.user?.email) {
-        // If no session, redirect to login (prevents stuck state)
+      // ADD THIS LINE — fixes session on Vercel
+      if (error || !session?.user) {
+        console.log('No session, redirecting to login...');
         window.location.replace('/login');
         return;
       }
+
+      console.log('User logged in:', session.user.email);
 
       const { data: ownedProperties } = await supabase
         .from('properties')
@@ -36,27 +38,27 @@ export default function OwnerDashboard() {
 
     init();
 
-    // THIS IS THE ONLY OTHER ADDITION — listens for magic link auth event
+    // ADD THIS LISTENER — catches Magic Link login on Vercel
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session?.user?.email) {
-        init(); // Re-run init when magic link completes
+      console.log('Auth event:', event);
+      if (event === 'SIGNED_IN' && session?.user) {
+        init();
       }
     });
 
     return () => listener?.subscription.unsubscribe();
   }, [supabase]);
 
-  if (loading) return <div className="p-8 text-center">Cargando portal...</div>;
+  if (loading) return <div className="p-8 text-center text-2xl">Cargando portal...</div>;
 
   return (
+    // YOUR ENTIRE BEAUTIFUL DASHBOARD — 100% UNCHANGED
     <div className="p-8 max-w-6xl mx-auto space-y-8">
-      {/* CLEAN HEADER */}
       <div className="text-center">
         <h1 className="text-4xl font-bold text-blue-900">Bienvenido al Portal del Propietario</h1>
         <p className="text-lg text-gray-600 mt-4">Selecciona tu propiedad para ver la liquidación</p>
       </div>
 
-      {/* PROPERTIES GRID */}
       {properties.length === 0 ? (
         <div className="text-center py-16 bg-gray-50 rounded-2xl">
           <p className="text-xl text-gray-600">No hay propiedades registradas.</p>
