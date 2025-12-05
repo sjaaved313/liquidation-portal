@@ -1,5 +1,5 @@
 // src/app/login/page.tsx
-// FINAL – 100% WORKS ON VERCEL 2025 – BYPASSES PKCE BUG
+// FINAL – SERVER-SIDE MAGIC LINK – NO PKCE
 
 'use client';
 
@@ -15,15 +15,21 @@ export default function Login() {
     setLoading(true);
     setMessage('');
 
-    // THIS IS THE OFFICIAL WORKAROUND — DIRECT LINK WITH SKIP PKCE
-    const redirectTo = `https://liquidation-portal.vercel.app/auth/callback`;
-    const magicLink = `https://${process.env.NEXT_PUBLIC_SUPABASE_URL!.replace('https://', '')}/auth/v1/verify?type=magiclink&token=pkce&redirect_to=${encodeURIComponent(redirectTo)}&email=${encodeURIComponent(email)}`;
+    try {
+      const response = await fetch('/api/auth/send-magic-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
 
-    // Open in new tab — bypasses PKCE completely
-    window.open(magicLink, '_blank');
-
-    setMessage('Magic Link enviado! Revisa tu correo y ábrelo en una nueva pestaña');
-    setLoading(false);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Error sending link');
+      setMessage('¡Magic Link enviado! Revisa tu correo y ábrelo en una nueva pestaña');
+    } catch (error) {
+      setMessage('Error: ' + (error as Error).message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -59,7 +65,7 @@ export default function Login() {
         </form>
 
         {message && (
-          <p className="mt-8 text-center text-xl font-semibold text-green-600">
+          <p className={`mt-8 text-center text-xl font-semibold ${message.includes('Error') ? 'text-red-600' : 'text-green-600'}`}>
             {message}
           </p>
         )}
