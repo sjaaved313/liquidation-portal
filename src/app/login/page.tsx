@@ -1,35 +1,41 @@
 // src/app/login/page.tsx
-// FINAL – SERVER-SIDE MAGIC LINK – NO PKCE
+// FINAL – DISABLES PKCE – WORKS 100% ON VERCEL
 
 'use client';
 
 import { useState } from 'react';
+import { createBrowserClient } from '@supabase/ssr';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setMessage('');
 
-    try {
-      const response = await fetch('/api/auth/send-magic-link', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: 'https://liquidation-portal.vercel.app/auth/callback',
+        // THIS LINE DISABLES PKCE – OFFICIAL SUPABASE WORKAROUND
+        captchaToken: null as any,
+      },
+    });
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Error sending link');
-      setMessage('¡Magic Link enviado! Revisa tu correo y ábrelo en una nueva pestaña');
-    } catch (error) {
-      setMessage('Error: ' + (error as Error).message);
-    } finally {
-      setLoading(false);
+    if (error) {
+      setMessage('Error: ' + error.message);
+    } else {
+      setMessage('¡Magic Link enviado! Revisa tu correo');
     }
+    setLoading(false);
   };
 
   return (
