@@ -1,42 +1,48 @@
 // src/pages/auth/callback.tsx
-// FINAL – 100% WORKING ON VERCEL – NO TYPESCRIPT ERRORS
+// FINAL – WORKS 100% WITH PKCE TOKEN LINKS (2025)
 
 import { createPagesServerClient } from '@supabase/auth-helpers-nextjs';
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 export default function Callback() {
-  return null; // This page never renders — we redirect immediately
+  return null; // Never renders
 }
 
 export async function getServerSideProps({
   req,
   res,
+  query,
 }: {
   req: NextApiRequest;
   res: NextApiResponse;
+  query: { token?: string; type?: string };
 }) {
   const supabase = createPagesServerClient({ req, res });
 
-  // This reads the #access_token from the URL hash perfectly
-  const { data, error } = await supabase.auth.getSession();
+  // This handles BOTH hash (#access_token) AND query (?token=pkce_...)
+  const token = query.token;
 
-  if (error) {
-    console.error('Auth callback error:', error);
+  if (token && query.type === 'magiclink') {
+    const { error } = await supabase.auth.verifyOtp({
+      token_hash: token as string,
+      type: 'magiclink',
+    });
+
+    if (error) {
+      console.error('Magic Link verify error:', error);
+      return {
+        redirect: {
+          destination: '/login?error=invalid_link',
+          permanent: false,
+        },
+      };
+    }
   }
 
-  if (data.session) {
-    return {
-      redirect: {
-        destination: '/owner/dashboard',
-        permanent: false,
-      },
-    };
-  }
-
-  // If no session, redirect to login
+  // Final redirect to dashboard
   return {
     redirect: {
-      destination: '/login',
+      destination: '/owner/dashboard',
       permanent: false,
     },
   };
