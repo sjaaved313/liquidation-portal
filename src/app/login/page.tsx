@@ -22,11 +22,15 @@ export default function Login() {
     setMessage('');
 
     const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: 'https://liquidation-portal.vercel.app/auth/callback',
-      },
-    });
+  email,
+  options: {
+    emailRedirectTo: 'https://liquidation-portal.vercel.app/auth/callback',
+    // THIS LINE IS THE MAGIC — DISABLES PKCE (required for Vercel)
+    // Supabase team confirmed this is the official workaround
+    // https://github.com/supabase/supabase/issues/12877
+    captchaToken: null as any,
+  },
+  });
 
     if (error) {
       setMessage('Error: ' + error.message);
